@@ -11,7 +11,12 @@ Comparte la base de datos y el JWT con casino-backend. Permite:
 Prefijo de rutas: /api/bonos  (para que nginx pueda enrutar por prefijo).
 """
 import os
+import time
+import psutil
 from contextlib import asynccontextmanager
+
+INICIO = time.time()
+READY_MAX_MEM_PERCENT = float(os.getenv("READY_MAX_MEM_PERCENT", "90"))
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,10 +58,28 @@ class ReclamarRequest(BaseModel):
     monto_base: float = Field(default=0, ge=0, description="Base para bonos por porcentaje")
 
 
-# TODO (alumno): implementar las rutas de salud que usará Kubernetes:
-#   - liveness: ¿el proceso está vivo? (respuesta simple).
-#   - readiness: ¿está listo para recibir tráfico? Debe verificar la BD.
-# Luego configurar livenessProbe/readinessProbe en el Deployment de EKS.
+@app.get("/livez", tags=["Health"])
+def livez():
+    """Liveness: el proceso está vivo (no depende de BD externa)."""
+    return {"alive": True, "uptime_segundos": round(time.time() - INICIO, 1)}
+
+
+@app.get("/readyz", tags=["Health"])
+def readyz():
+    """Readiness: listo solo si NO esta saturado de memoria (uso real con psutil)."""
+    from .db import ping
+    if not ping():
+        raise HTTPException(status_code=503, detail="Database connection failed")
+        
+    cpu = psutil.cpu_percent(interval=0.1)
+    memoria_usada = psutil.virtual_memory().percent
+    
+    if memoria_usada > READY_MAX_MEM_PERCENT:
+        raise HTTPException(
+            status_code=503,
+            detail={"ready": False, "cpu_%": cpu, "memoria_%": memoria_usada, "umbral_%": READY_MAX_MEM_PERCENT},
+        )
+    return {"ready": True, "db": "up", "cpu_%": cpu, "memoria_%": memoria_usada}
 
 
 @app.get("/api/bonos")
