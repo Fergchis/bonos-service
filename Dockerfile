@@ -34,10 +34,10 @@ COPY --chown=appuser:appuser . .
 USER appuser
 
 #Comunicacion del docker 
-EXPOSE 8006
+EXPOSE 8004
 
 #Comprobacion de estado mediante peticion HTTP interna
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/live')" || exit 1
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/livez')" || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8006"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8004"]
