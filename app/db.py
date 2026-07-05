@@ -30,6 +30,7 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER", "casino"),
     "password": os.getenv("DB_PASSWORD", "casino"),
     "dbname": os.getenv("DB_NAME", "casino_db"),
+    "sslmode": "require",
 }
 
 # Pool de conexiones apto para los hilos del threadpool de FastAPI.
